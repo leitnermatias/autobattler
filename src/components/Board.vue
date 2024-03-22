@@ -5,14 +5,14 @@
                 <transition-group name="fade">
                     <div  :key="index"
                     class="column" 
-                    :class="{targeted: tile === currentTarget, player: tile.isPlayer}"
+                    :class="{targeted: currentTargets.includes(tile), player: tile.isPlayer}"
                     v-for="tile, index in row">
                     <span>
                         {{ tile.emoji }}
                     </span>
                     <transition name="fade">
-                        <span class="enemy-health" :key="currentTarget.hp" v-if="tile === currentTarget">
-                            ❤️{{ currentTarget.hp.toFixed(1) }}
+                        <span class="enemy-health" :key="tile.hp" v-if="currentTargets.includes(tile)">
+                            ❤️{{ tile.hp.toFixed(1) }}
                         </span>
                     </transition>
                     </div>
@@ -28,6 +28,8 @@
         <p>Experience: {{ player.exp }}</p>
         <p>Level: {{ level }}</p>
         <p>Enemies defeated: {{ enemiesDefeated }}</p>
+        <p>Targeting {{ Math.ceil(enemiesTargeted) }} enemies</p>
+        <p>Enemies count: {{ enemiesCount }}</p>
     </div>
     <div class="card upgrades">
         <p class="title">🤩 Upgrades</p>
@@ -46,6 +48,7 @@ type BoardTile = {
     hp: number
     emoji: string
     isPlayer?: boolean
+    target?: boolean
 }
 
 type Upgrade = {
@@ -62,6 +65,7 @@ import {emojis} from "../utils"
 const mainTick = ref<number>()
 const playerTick = ref<number>()
 const calculationTick = ref<number>()
+const targetingTick = ref<number>()
 
 const player = ref({
     exp: 0
@@ -70,6 +74,8 @@ const player = ref({
 const enemiesDefeated = ref(0)
 
 const extraDamage = ref(0)
+
+const enemiesTargeted = ref(1)
 
 const level = computed(() => {
     return Math.floor((player.value.exp / 10))
@@ -97,10 +103,13 @@ onMounted(() => {
     mainTick.value = setInterval(() => {
         playerTick.value = setInterval(playerCalculation, 300)
         calculationTick.value = setInterval(gameCalculation, 100)
+        targetingTick.value = setInterval(targetingCalculation, 50)
         setTimeout(() => {
             clearInterval(playerTick.value)
             clearInterval(calculationTick.value)
-            currentTarget.value = undefined
+            clearInterval(targetingTick.value)
+            currentTargets.value.forEach(tile => tile.target = false)
+            currentTargets.value = []
         }, 1900)
         spawnEnemies(enemiesCount.value)
     }, 2000)
@@ -111,10 +120,11 @@ onUnmounted(() => {
     clearInterval(mainTick.value)
     clearTimeout(playerTick.value)
     clearInterval(calculationTick.value)
+    clearInterval(targetingTick.value)
 })
 
 const board = ref<BoardTile[][]>([])
-const currentTarget = ref<BoardTile>()
+const currentTargets = ref<BoardTile[]>([])
 const userBoardIndex = ref({
     row: 0,
     col: 0
@@ -188,46 +198,55 @@ function gameCalculation() {
         }
     })
 
-    if (!currentTarget.value) {
-        let randomTile = getRandomTile()
-        while (!randomTile) {
-            randomTile = getRandomTile()
+    currentTargets.value.forEach((tile, index) => {
+        if (tile.emoji === '') {
+            currentTargets.value.splice(index, 1)
+            tile.target = false
         }
-        currentTarget.value = randomTile
-    }
+    
+        if (tile.hp <= 0) {
+            tile.emoji = ''
+            currentTargets.value.splice(index, 1)
+            player.value.exp += 5
+            enemiesDefeated.value += 1
+            tile.target = false
+        } 
 
-
-    if (currentTarget.value.emoji === '') {
-        currentTarget.value = undefined
-        return
-    }
-
-    if (currentTarget.value.hp <= 0) {
-        currentTarget.value.emoji = ''
-        currentTarget.value = undefined
-        player.value.exp += 5
-        enemiesDefeated.value += 1
-    } 
+    })
 }
 
 function playerCalculation() {
-    if (currentTarget.value) {
-        currentTarget.value.hp -= damage.value
+    currentTargets.value.forEach(tile => {
+        tile.hp -= damage.value
         player.value.exp += 1
+    })
+}
+
+function targetingCalculation() {
+    if (currentTargets.value.length === 0) {
+        const tiles = getRandomTiles()
+        let count = 0
+        tiles.forEach(tile => {
+            if (count < enemiesTargeted.value) {
+                tile.target = true
+                currentTargets.value.push(tile)
+                count += 1
+            }
+        })
     }
 }
 
-function getRandomTile() {
+function getRandomTiles() {
     const enemies: BoardTile[] = []
     board.value.forEach(row => {
-        const tiles = row.filter(column => !column.isPlayer && column.emoji !== '')
+        const tiles = row.filter(column => !column.isPlayer && column.emoji !== '' && !column.target)
         if (tiles.length > 0) {
             enemies.push(...tiles)
         }
     })
 
     
-    return enemies[Math.floor(Math.random() * enemies.length)]
+    return enemies
 }
 
 const upgrades = ref<Upgrade[]>([
@@ -409,6 +428,105 @@ const upgrades = ref<Upgrade[]>([
         unlockedAt: 1000,
         onActivation: () => {
             extraDamage.value += 10
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 1200,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 1300,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 1400,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 1500,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 1600,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 1700,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 1800,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 1900,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 50,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 100,
+        onActivation: () => {
+            enemiesTargeted.value += 1
+        }
+    },
+    {
+        name: ``,
+        description: '+ 1 enemy targeted',
+        unlocked: false,
+        unlockedAt: 500,
+        onActivation: () => {
+            enemiesTargeted.value += 1
         }
     },
 ])
