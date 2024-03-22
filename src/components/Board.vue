@@ -29,7 +29,6 @@
         <p>Level: {{ level }}</p>
         <p>Enemies defeated: {{ enemiesDefeated }}</p>
         <p>Targeting {{ Math.ceil(enemiesTargeted) }} enemies</p>
-        <p>Enemies count: {{ enemiesCount }}</p>
     </div>
     <div class="card upgrades">
         <p class="title">🤩 Upgrades</p>
